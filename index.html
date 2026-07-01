@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BytePlay — Game Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090d;
+  --surface:#0f1118;
+  --surface2:#161a26;
+  --border:#1e2436;
+  --border2:#2a3050;
+  --text:#e8ecf5;
+  --muted:#5a6480;
+  --muted2:#8090b0;
+  --gold:#f0b429;
+  --gold-glow:rgba(240,180,41,0.18);
+  --blue:#4a8eff;
+  --purple:#9b6fff;
+  --mint:#3dd6a0;
+  --coral:#ff5f6d;
+  --font:'Space Grotesk',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── BG GRID ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(74,142,255,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(74,142,255,0.03) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── NOISE ── */
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:0.5;
+}
+
+/* ── IFRAME MANAGER ── */
+#app-shell{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* ── HUB view ── */
+#hub{flex:1;display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 32px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:50;
+  background:rgba(8,9,13,0.85);
+  backdrop-filter:blur(16px);
+}
+.brand{
+  font-family:var(--mono);
+  font-size:20px;font-weight:700;
+  letter-spacing:-0.5px;
+  color:var(--gold);
+  display:flex;align-items:center;gap:6px;
+}
+.brand-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--gold);
+  box-shadow:0 0 10px var(--gold);
+  animation:pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:0.6}}
+
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.nav-pill{
+  font-size:12px;font-weight:600;
+  color:var(--muted2);letter-spacing:0.5px;
+  padding:6px 14px;border-radius:20px;
+  border:1px solid var(--border2);
+  background:none;cursor:pointer;
+  font-family:var(--font);
+  transition:all 0.15s;
+}
+.nav-pill:hover,.nav-pill.active{color:var(--gold);border-color:var(--gold);background:var(--gold-glow);}
+
+/* ── HERO ── */
+.hero{
+  text-align:center;
+  padding:72px 24px 56px;
+  position:relative;
+}
+.hero-eyebrow{
+  font-family:var(--mono);font-size:11px;
+  letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--gold);margin-bottom:20px;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.hero-eyebrow::before,.hero-eyebrow::after{
+  content:'';width:24px;height:1px;background:var(--gold);opacity:0.5;
+}
+.hero-title{
+  font-size:clamp(42px,7vw,80px);
+  font-weight:700;
+  line-height:1.05;
+  letter-spacing:-2px;
+  margin-bottom:18px;
+}
+.hero-title .g1{color:var(--blue);}
+.hero-title .g2{color:var(--purple);}
+.hero-title .g3{color:var(--mint);}
+.hero-subtitle{
+  font-size:17px;color:var(--muted2);
+  max-width:480px;margin:0 auto 36px;
+  line-height:1.65;font-weight:400;
+}
+.hero-stats{
+  display:inline-flex;gap:32px;
+  border:1px solid var(--border2);
+  border-radius:16px;
+  padding:16px 32px;
+  background:var(--surface);
+}
+.hs{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hs-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text);}
+.hs-lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+
+/* ── GLOW ORBS ── */
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:-1;}
+.orb1{width:400px;height:400px;background:rgba(74,142,255,0.08);top:-100px;left:-100px;}
+.orb2{width:300px;height:300px;background:rgba(155,111,255,0.08);top:0;right:-80px;}
+
+/* ── GAME CARDS ── */
+.games-section{padding:0 24px 80px;max-width:1100px;margin:0 auto;width:100%;}
+.section-label{
+  font-family:var(--mono);font-size:11px;
+  letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:24px;
+  display:flex;align-items:center;gap:12px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.games-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:20px;
+}
+
+.game-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s;
+  position:relative;
+  display:flex;flex-direction:column;
+}
+.game-card:hover{
+  transform:translateY(-4px);
+  border-color:var(--border2);
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+
+.card-preview{
+  height:200px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+  font-size:72px;
+}
+.card-preview::before{
+  content:'';position:absolute;inset:0;
+  opacity:0.15;
+}
+
+/* Per-game accent colors */
+.game-card[data-game="typeflow"] .card-preview::before{background:radial-gradient(circle at 50% 50%,var(--gold),transparent 70%);}
+.game-card[data-game="typeflow"]{--accent:var(--gold);}
+.game-card[data-game="zip"] .card-preview::before{background:radial-gradient(circle at 50% 50%,var(--blue),transparent 70%);}
+.game-card[data-game="zip"]{--accent:var(--blue);}
+.game-card[data-game="patches"] .card-preview::before{background:radial-gradient(circle at 50% 50%,var(--purple),transparent 70%);}
+.game-card[data-game="patches"]{--accent:var(--purple);}
+
+.card-preview-art{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;
+}
+
+/* TypeFlow preview */
+.tf-preview{
+  display:flex;flex-direction:column;gap:8px;padding:20px 24px;width:100%;
+}
+.tf-line{
+  display:flex;gap:4px;align-items:center;
+}
+.tf-char{
+  width:12px;height:14px;border-radius:2px;
+  font-family:var(--mono);font-size:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;
+}
+.tf-char.cor{color:var(--gold);}
+.tf-char.pend{color:rgba(255,255,255,0.15);}
+.tf-char.caret{position:relative;}
+.tf-char.caret::before{
+  content:'';position:absolute;left:-1px;top:1px;bottom:1px;
+  width:2px;background:var(--gold);border-radius:1px;
+  animation:blink 1s step-end infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.tf-wpm{
+  font-family:var(--mono);font-size:28px;font-weight:700;
+  color:var(--gold);text-align:center;margin-top:4px;
+}
+.tf-wpm span{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px;}
+
+/* ZIP preview */
+.zip-preview{padding:16px;}
+.zip-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  gap:3px;border-radius:8px;overflow:hidden;
+}
+.zip-cell{
+  aspect-ratio:1;border-radius:2px;
+  background:rgba(255,255,255,0.05);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:transparent;
+}
+.zip-cell.visited{background:rgba(74,142,255,0.25);}
+.zip-cell.num{background:rgba(30,36,54,0.8);color:var(--blue);font-size:9px;}
+.zip-cell.path{background:rgba(74,142,255,0.4);}
+
+/* Patches preview */
+.patch-preview{padding:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;}
+.patch-cell{
+  aspect-ratio:1;border-radius:4px;
+  background:rgba(255,255,255,0.04);
+}
+.patch-cell.p1{background:rgba(108,99,255,0.5);}
+.patch-cell.p2{background:rgba(239,68,68,0.5);}
+.patch-cell.p3{background:rgba(16,185,129,0.5);}
+.patch-cell.p4{background:rgba(245,158,11,0.5);}
+.patch-cell.p5{background:rgba(236,72,153,0.5);}
+
+.card-body{padding:20px 24px 24px;flex:1;display:flex;flex-direction:column;gap:12px;}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;}
+.card-title{
+  font-size:22px;font-weight:700;
+  letter-spacing:-0.5px;
+  color:var(--text);
+}
+.card-tag{
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  padding:3px 8px;border-radius:6px;
+  border:1px solid var(--accent,var(--gold));
+  color:var(--accent,var(--gold));
+  letter-spacing:0.5px;text-transform:uppercase;
+}
+.card-desc{font-size:14px;color:var(--muted2);line-height:1.6;flex:1;}
+.card-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:12px;border-top:1px solid var(--border);
+}
+.card-meta{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.card-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--accent,var(--gold));
+  color:var(--bg);border:none;
+  padding:8px 18px;border-radius:10px;
+  font-family:var(--font);font-size:13px;font-weight:700;
+  cursor:pointer;transition:opacity 0.15s,transform 0.1s;
+}
+.card-btn:hover{opacity:0.88;transform:translateX(2px);}
+.card-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ── SCORES SECTION ── */
+.scores-section{
+  max-width:1100px;margin:0 auto;padding:0 24px 60px;width:100%;
+}
+.scores-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+.score-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:20px;
+}
+.score-game-name{
+  font-size:13px;font-weight:700;color:var(--muted2);
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.score-game-name .dot{
+  width:8px;height:8px;border-radius:50%;
+}
+.score-rows{display:flex;flex-direction:column;gap:8px;}
+.score-row{
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:12px;
+}
+.score-label{color:var(--muted);}
+.score-value{color:var(--text);font-weight:700;}
+.score-value.highlight{color:var(--gold);}
+
+/* ── GAME IFRAME SHELL ── */
+#game-shell{
+  display:none;
+  position:fixed;inset:0;z-index:200;
+  flex-direction:column;
+  background:var(--bg);
+}
+#game-shell.open{display:flex;}
+
+.game-topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 20px;
+  border-bottom:1px solid var(--border);
+  background:rgba(8,9,13,0.95);
+  backdrop-filter:blur(16px);
+  flex-shrink:0;
+  z-index:10;
+}
+.back-btn{
+  display:flex;align-items:center;gap:6px;
+  background:none;border:1px solid var(--border2);
+  color:var(--muted2);padding:6px 14px;border-radius:8px;
+  cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;
+  transition:all 0.15s;
+}
+.back-btn:hover{border-color:var(--gold);color:var(--gold);}
+.back-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+.game-topbar-title{
+  font-weight:700;font-size:16px;color:var(--text);
+}
+.game-topbar-tag{
+  font-family:var(--mono);font-size:10px;color:var(--muted);
+  padding:2px 8px;border-radius:4px;background:var(--surface2);
+}
+.game-topbar-spacer{flex:1;}
+.fullscreen-btn{
+  background:none;border:1px solid var(--border);
+  color:var(--muted);padding:6px 10px;border-radius:8px;
+  cursor:pointer;font-size:11px;font-family:var(--mono);
+  transition:all 0.15s;
+}
+.fullscreen-btn:hover{border-color:var(--muted2);color:var(--text);}
+
+#game-iframe-wrap{flex:1;position:relative;overflow:hidden;}
+#game-iframe{
+  width:100%;height:100%;border:none;
+  background:#fff;
+}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);padding:10px 20px;border-radius:12px;
+  font-size:13px;font-weight:600;
+  opacity:0;pointer-events:none;
+  transition:all 0.3s;z-index:1000;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── HOW-TO SECTION ── */
+.howto-section{
+  max-width:1100px;margin:0 auto;
+  padding:0 24px 80px;width:100%;
+}
+.howto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+.howto-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:24px;
+}
+.howto-title{
+  font-size:16px;font-weight:700;margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
+}
+.howto-accent{width:4px;height:18px;border-radius:2px;}
+.howto-steps{display:flex;flex-direction:column;gap:12px;}
+.howto-step{
+  display:flex;gap:12px;align-items:flex-start;
+  font-size:13px;color:var(--muted2);line-height:1.55;
+}
+.howto-step-n{
+  width:22px;height:22px;border-radius:50%;
+  font-size:11px;font-weight:700;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:1px;
+}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);
+  padding:24px 32px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .topbar{padding:14px 16px;}
+  .hero{padding:48px 16px 40px;}
+  .hero-stats{flex-direction:column;gap:16px;padding:16px 24px;}
+  .games-section,.scores-section,.howto-section{padding-left:16px;padding-right:16px;}
+  footer{flex-direction:column;gap:8px;text-align:center;}
+  .nav-pill span{display:none;}
+}
+
+/* ── ACTIVE GAME HIGHLIGHT in topbar ── */
+.game-active-dot{
+  width:6px;height:6px;border-radius:50%;
+  animation:pulse-dot 1.5s ease-in-out infinite;
+  flex-shrink:0;
+}
+</style>
+</head>
+<body>
+
+<div id="app-shell">
+
+  <!-- ══════════════ HUB ══════════════ -->
+  <div id="hub">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        BytePlay
+      </div>
+      <div class="topbar-right">
+        <button class="nav-pill" onclick="scrollTo('#games')">🎮 Games</button>
+        <button class="nav-pill" onclick="scrollTo('#scores')">🏆 Scores</button>
+        <button class="nav-pill" onclick="scrollTo('#howto')">📖 How to play</button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="orb orb1"></div>
+      <div class="orb orb2"></div>
+      <div class="hero-eyebrow">Three games · One hub · Zero boredom</div>
+      <h1 class="hero-title">
+        <span class="g1">Think</span>&thinsp;<span class="g2">Fast</span>&thinsp;<span class="g3">Play</span>
+      </h1>
+      <p class="hero-subtitle">A curated arcade of brain games — test your typing speed, solve path puzzles, and fill colorful patches.</p>
+      <div class="hero-stats">
+        <div class="hs">
+          <div class="hs-val" id="stat-plays">0</div>
+          <div class="hs-lbl">Games Played</div>
+        </div>
+        <div class="hs">
+          <div class="hs-val" id="stat-best-wpm">—</div>
+          <div class="hs-lbl">Best WPM</div>
+        </div>
+        <div class="hs">
+          <div class="hs-val" id="stat-streak">0</div>
+          <div class="hs-lbl">ZIP Streak</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Games -->
+    <section class="games-section" id="games">
+      <div class="section-label">Pick your game</div>
+      <div class="games-grid">
+
+        <!-- TypeFlow -->
+        <div class="game-card" data-game="typeflow" onclick="openGame('typeflow')">
+          <div class="card-preview">
+            <div class="card-preview-art">
+              <div class="tf-preview">
+                <div class="tf-line">
+                  <span class="tf-char cor">t</span><span class="tf-char cor">h</span><span class="tf-char cor">e</span>
+                  <span class="tf-char" style="width:6px"></span>
+                  <span class="tf-char cor">q</span><span class="tf-char cor">u</span><span class="tf-char cor">i</span><span class="tf-char cor">c</span><span class="tf-char cor">k</span>
+                  <span class="tf-char" style="width:6px"></span>
+                  <span class="tf-char caret pend">b</span><span class="tf-char pend">r</span><span class="tf-char pend">o</span><span class="tf-char pend">w</span><span class="tf-char pend">n</span>
+                </div>
+                <div class="tf-line">
+                  <span class="tf-char pend">f</span><span class="tf-char pend">o</span><span class="tf-char pend">x</span>
+                  <span class="tf-char" style="width:6px"></span>
+                  <span class="tf-char pend">j</span><span class="tf-char pend">u</span><span class="tf-char pend">m</span><span class="tf-char pend">p</span><span class="tf-char pend">s</span>
+                </div>
+                <div class="tf-wpm">64<span>wpm</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-top">
+              <div class="card-title">TypeFlow</div>
+              <div class="card-tag">Typing</div>
+            </div>
+            <div class="card-desc">Race against the clock and test your typing speed. Choose from time, word count, quote, or code modes. Track your WPM, accuracy and personal bests.</div>
+            <div class="card-footer">
+              <div class="card-meta">⏱ Time · 📝 Words · ❝ Quote · ⌥ Code</div>
+              <button class="card-btn" onclick="event.stopPropagation();openGame('typeflow')">
+                Play <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ZIP -->
+        <div class="game-card" data-game="zip" onclick="openGame('zip')">
+          <div class="card-preview">
+            <div class="card-preview-art">
+              <div class="zip-preview">
+                <div class="zip-grid" id="zip-preview-grid"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-top">
+              <div class="card-title">ZIP Unlimited</div>
+              <div class="card-tag">Puzzle</div>
+            </div>
+            <div class="card-desc">Draw a single continuous path through every cell of the grid. Connect numbered waypoints in order without crossing walls or revisiting cells.</div>
+            <div class="card-footer">
+              <div class="card-meta">📐 5×5 → 7×7 · Easy → Hard</div>
+              <button class="card-btn" onclick="event.stopPropagation();openGame('zip')">
+                Play <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Patches -->
+        <div class="game-card" data-game="patches" onclick="openGame('patches')">
+          <div class="card-preview">
+            <div class="card-preview-art">
+              <div class="patch-preview">
+                <div class="patch-cell p1"></div><div class="patch-cell p1"></div><div class="patch-cell p2"></div><div class="patch-cell p2"></div>
+                <div class="patch-cell p1"></div><div class="patch-cell p3"></div><div class="patch-cell p2"></div><div class="patch-cell p4"></div>
+                <div class="patch-cell p3"></div><div class="patch-cell p3"></div><div class="patch-cell p4"></div><div class="patch-cell p4"></div>
+                <div class="patch-cell p5"></div><div class="patch-cell p5"></div><div class="patch-cell p5"></div><div class="patch-cell p4"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-top">
+              <div class="card-title">Patches</div>
+              <div class="card-tag">Spatial</div>
+            </div>
+            <div class="card-desc">Drag to draw colorful rectangles that cover the entire grid. Each patch must contain exactly one number clue matching its size and shape.</div>
+            <div class="card-footer">
+              <div class="card-meta">🟢 Easy · 🟡 Medium · 🔴 Hard</div>
+              <button class="card-btn" onclick="event.stopPropagation();openGame('patches')">
+                Play <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Scores -->
+    <section class="scores-section" id="scores">
+      <div class="section-label">Your stats</div>
+      <div class="scores-grid">
+        <div class="score-card">
+          <div class="score-game-name">
+            <div class="dot" style="background:var(--gold)"></div>TypeFlow
+          </div>
+          <div class="score-rows">
+            <div class="score-row"><span class="score-label">Best WPM</span><span class="score-value highlight" id="sc-best-wpm">—</span></div>
+            <div class="score-row"><span class="score-label">Best Accuracy</span><span class="score-value" id="sc-best-acc">—</span></div>
+            <div class="score-row"><span class="score-label">Tests taken</span><span class="score-value" id="sc-tests">0</span></div>
+          </div>
+        </div>
+        <div class="score-card">
+          <div class="score-game-name">
+            <div class="dot" style="background:var(--blue)"></div>ZIP Unlimited
+          </div>
+          <div class="score-rows">
+            <div class="score-row"><span class="score-label">Best 5×5 time</span><span class="score-value highlight" id="sc-zip-5">—</span></div>
+            <div class="score-row"><span class="score-label">Best 6×6 time</span><span class="score-value" id="sc-zip-6">—</span></div>
+            <div class="score-row"><span class="score-label">Win streak</span><span class="score-value" id="sc-zip-streak">0</span></div>
+          </div>
+        </div>
+        <div class="score-card">
+          <div class="score-game-name">
+            <div class="dot" style="background:var(--purple)"></div>Patches
+          </div>
+          <div class="score-rows">
+            <div class="score-row"><span class="score-label">Puzzles solved</span><span class="score-value highlight" id="sc-patches-solved">0</span></div>
+            <div class="score-row"><span class="score-label">Current puzzle</span><span class="score-value" id="sc-patches-puzzle">#1</span></div>
+            <div class="score-row"><span class="score-label">Hints used</span><span class="score-value" id="sc-patches-hints">0</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How to play -->
+    <section class="howto-section" id="howto">
+      <div class="section-label">How to play</div>
+      <div class="howto-grid">
+        <div class="howto-card">
+          <div class="howto-title">
+            <div class="howto-accent" style="background:var(--gold)"></div>
+            TypeFlow
+          </div>
+          <div class="howto-steps">
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:var(--gold-glow);color:var(--gold)">1</div>
+              <div>Click anywhere or start typing to begin the timer.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:var(--gold-glow);color:var(--gold)">2</div>
+              <div>Type each word followed by <b>space</b> to advance. Correct chars glow gold, wrong ones turn red.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:var(--gold-glow);color:var(--gold)">3</div>
+              <div>The heatmap bar shows your speed per word — green is fast, red is slow.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:var(--gold-glow);color:var(--gold)">4</div>
+              <div>Chain 10 perfect words in a row to trigger a 🔥 Combo streak badge.</div>
+            </div>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-title">
+            <div class="howto-accent" style="background:var(--blue)"></div>
+            ZIP Unlimited
+          </div>
+          <div class="howto-steps">
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(74,142,255,0.15);color:var(--blue)">1</div>
+              <div>Tap cell <b>1</b>, then drag to connect numbers in order.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(74,142,255,0.15);color:var(--blue)">2</div>
+              <div>Move only <b>horizontally or vertically</b> — no diagonals allowed.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(74,142,255,0.15);color:var(--blue)">3</div>
+              <div>Fill <b>every single cell</b> exactly once — no gaps allowed.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(74,142,255,0.15);color:var(--blue)">4</div>
+              <div>Don't cross red <b>walls</b> or revisit cells you've already visited.</div>
+            </div>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-title">
+            <div class="howto-accent" style="background:var(--purple)"></div>
+            Patches
+          </div>
+          <div class="howto-steps">
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(155,111,255,0.15);color:var(--purple)">1</div>
+              <div>Drag across cells to draw <b>rectangles</b> covering the grid.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(155,111,255,0.15);color:var(--purple)">2</div>
+              <div>Each rectangle must contain <b>exactly one clue</b> cell.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(155,111,255,0.15);color:var(--purple)">3</div>
+              <div>The <b>number</b> tells you how many cells the patch must cover.</div>
+            </div>
+            <div class="howto-step">
+              <div class="howto-step-n" style="background:rgba(155,111,255,0.15);color:var(--purple)">4</div>
+              <div>The <b>shape icon</b> tells you if it's square ■, wide ▬, or tall ▮.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>BytePlay © 2025</span>
+      <span>TypeFlow · ZIP · Patches</span>
+      <span>Made with ♥ by Mihir</span>
+    </footer>
+
+  </div><!-- /#hub -->
+
+  <!-- ══════════════ GAME SHELL ══════════════ -->
+  <div id="game-shell">
+    <div class="game-topbar">
+      <button class="back-btn" onclick="closeGame()">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Hub
+      </button>
+      <div class="game-active-dot" id="game-active-dot"></div>
+      <div class="game-topbar-title" id="game-topbar-title">Game</div>
+      <div class="game-topbar-tag" id="game-topbar-tag"></div>
+      <div class="game-topbar-spacer"></div>
+      <button class="fullscreen-btn" onclick="toggleFullscreen()" id="fs-btn">⛶ fullscreen</button>
+    </div>
+    <div id="game-iframe-wrap">
+      <iframe id="game-iframe" title="Game" allow="fullscreen"></iframe>
+    </div>
+  </div>
+
+</div><!-- /#app-shell -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── GAME CONFIGS ─────────────────────────────────────────────
+const GAMES = {
+  typeflow: {
+    title: 'TypeFlow',
+    tag: 'Typing Speed',
+    file: 'typeflow.html',
+    color: '#f0b429',
+  },
+  zip: {
+    title: 'ZIP Unlimited',
+    tag: 'Path Puzzle',
+    file: 'zip.html',
+    color: '#4a8eff',
+  },
+  patches: {
+    title: 'Patches',
+    tag: 'Spatial Puzzle',
+    file: 'patches.html',
+    color: '#9b6fff',
+  }
+};
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function scrollTo(sel) {
+  const el = document.querySelector(sel);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── OPEN/CLOSE GAME ──────────────────────────────────────────
+let currentGame = null;
+
+function openGame(id) {
+  const g = GAMES[id];
+  if (!g) return;
+  currentGame = id;
+
+  document.getElementById('game-topbar-title').textContent = g.title;
+  document.getElementById('game-topbar-tag').textContent = g.tag;
+  document.getElementById('game-active-dot').style.background = g.color;
+  document.getElementById('game-active-dot').style.boxShadow = `0 0 8px ${g.color}`;
+
+  const iframe = document.getElementById('game-iframe');
+  iframe.src = g.file;
+
+  document.getElementById('game-shell').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Track plays
+  const plays = parseInt(localStorage.getItem('bp_plays') || '0') + 1;
+  localStorage.setItem('bp_plays', plays);
+  document.getElementById('stat-plays').textContent = plays;
+
+  showToast(`Loading ${g.title}...`);
+}
+
+function closeGame() {
+  document.getElementById('game-shell').classList.remove('open');
+  document.getElementById('game-iframe').src = 'about:blank';
+  document.body.style.overflow = '';
+  currentGame = null;
+  refreshStats();
+}
+
+function toggleFullscreen() {
+  const wrap = document.getElementById('game-iframe-wrap');
+  if (!document.fullscreenElement) {
+    wrap.requestFullscreen().catch(() => {});
+    document.getElementById('fs-btn').textContent = '✕ exit fullscreen';
+  } else {
+    document.exitFullscreen();
+    document.getElementById('fs-btn').textContent = '⛶ fullscreen';
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    document.getElementById('fs-btn').textContent = '⛶ fullscreen';
+  }
+});
+
+// ── STATS ────────────────────────────────────────────────────
+function refreshStats() {
+  const plays = localStorage.getItem('bp_plays') || '0';
+  document.getElementById('stat-plays').textContent = plays;
+
+  // TypeFlow stats (from tf_lb key set in typeflow.html)
+  try {
+    const lb = JSON.parse(localStorage.getItem('tf_lb') || '[]');
+    if (lb.length) {
+      const bestWpm = Math.max(...lb.map(e => e.wpm));
+      const bestAcc = Math.max(...lb.map(e => e.acc));
+      document.getElementById('sc-best-wpm').textContent = bestWpm + ' wpm';
+      document.getElementById('sc-best-acc').textContent = bestAcc + '%';
+      document.getElementById('stat-best-wpm').textContent = bestWpm;
+      document.getElementById('sc-tests').textContent = lb.length;
+    }
+  } catch(e) {}
+
+  // ZIP stats
+  try {
+    const zipBests = JSON.parse(localStorage.getItem('bests') || '{}');
+    const fmt = s => s ? `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` : '—';
+    document.getElementById('sc-zip-5').textContent = fmt(zipBests[5]);
+    document.getElementById('sc-zip-6').textContent = fmt(zipBests[6]);
+    const streak = localStorage.getItem('streak') || '0';
+    document.getElementById('sc-zip-streak').textContent = streak;
+    document.getElementById('stat-streak').textContent = streak;
+  } catch(e) {}
+
+  // Patches stats (stored separately)
+  try {
+    const ps = JSON.parse(localStorage.getItem('bp_patches') || '{}');
+    document.getElementById('sc-patches-solved').textContent = ps.solved || 0;
+    document.getElementById('sc-patches-puzzle').textContent = '#' + (ps.current || 1);
+    document.getElementById('sc-patches-hints').textContent = ps.hints || 0;
+  } catch(e) {}
+}
+
+// ── TOAST ────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── ZIP PREVIEW ──────────────────────────────────────────────
+function buildZipPreview() {
+  const grid = document.getElementById('zip-preview-grid');
+  // A little decorative 5x5 grid with a fake solved path
+  const path = [
+    [0,0],[1,0],[2,0],[3,0],[4,0],
+    [4,1],[3,1],[2,1],[1,1],[0,1],
+    [0,2],[0,3],[1,3],[2,3],[3,3],
+    [4,3],[4,2],[3,2],[2,2],[1,2],
+    [1,4],[2,4],[3,4],[4,4],[0,4]
+  ];
+  const nums = { '0,0':1, '4,0':2, '0,2':3, '4,4':4, '0,4':5 };
+
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const cell = document.createElement('div');
+      const key = `${c},${r}`;
+      const inPath = path.some(([pc, pr]) => pc === c && pr === r);
+      const numVal = nums[key];
+
+      if (numVal) {
+        cell.className = 'zip-cell num';
+        cell.textContent = numVal;
+      } else if (inPath) {
+        cell.className = 'zip-cell path';
+      } else {
+        cell.className = 'zip-cell';
+      }
+      grid.appendChild(cell);
+    }
+  }
+}
+
+// ── ESC KEY ──────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && currentGame) closeGame();
+});
+
+// ── BOOT ─────────────────────────────────────────────────────
+buildZipPreview();
+refreshStats();
+
+// Refresh stats every time user returns to this tab
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshStats();
+});
+</script>
+</body>
+</html>
